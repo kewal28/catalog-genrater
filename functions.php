@@ -7,6 +7,7 @@ class GenratePdf {
   private $password = "1234567";
   private $previewPdfFile = "./preview-page.pdf";
   private $orignalPdfFile = "./cat-m2wl.pdf";
+  private $uploadPath = "./upload";
 
   public function __construct() {
     $this->debug = false;
@@ -28,17 +29,20 @@ class GenratePdf {
   }
 
   function uploadImage($request) {
-    $uploadPath = "./upload";
-    if(!empty($request['myFile'])) {
+    $uploadPath = $this->uploadPath;
+    if(!empty($request['myFile']['name'])) {
         $fileName = $request['myFile']['name'];
-        $file = explode(".", $request['myFile']['name']);
+        $file = explode(".", $fileName);
         if(in_array($file[1],["png", "jpg", "jpeg"])) {
             $fileploadName = $uploadPath.'/'.$fileName;
             move_uploaded_file($request['myFile']["tmp_name"], $fileploadName);
-            $_SESSION['filepath'] = $fileploadName;
+            $_SESSION['filepath'] = $fileName;
         }
+        return ["folder" => $uploadPath, "filepath" => $_SESSION['filepath'], "ext" => $file[1], "filename" => $file[0]];
+    } else {
+      $file = explode(".", $_SESSION['filepath']);
+      return ["folder" => $uploadPath, "filepath" => $_SESSION['filepath'], "ext" => $file[1], "filename" => $file[0]];
     }
-    return ["folder" => $uploadPath, "filepath" => $_SESSION['filepath'], "ext" => $file[1], "filename" => $file[0]];
   }
 
   function genratePreview($request) {
@@ -49,10 +53,10 @@ class GenratePdf {
     }
     $logo = $this->uploadImage($request);
     $thumb1 = $logo["folder"]."/".$logo["filename"]."_1_thumb.".$logo["ext"];
-    $this->generateThumbnail($logo["filepath"], $thumb1, 300, 180);
+    $this->generateThumbnail($logo["folder"]."/".$logo["filepath"], $thumb1, 300, 180);
     $_SESSION['filepath_1_thumb'] = $thumb1;
     $thumb = $logo["folder"]."/".$logo["filename"]."_thumb.".$logo["ext"];
-    $this->generateThumbnail($logo["filepath"], $thumb, 180, 120);
+    $this->generateThumbnail($logo["folder"]."/".$logo["filepath"], $thumb, 180, 120);
     $_SESSION['filepath_thumb'] = $thumb;
     $tagLine = (!empty($request['tagLine'])) ? $request['tagLine']: "";
     $tagLineFont = (!empty($request['tagLineFont'])) ? $request['tagLineFont']: "";
@@ -113,7 +117,7 @@ class GenratePdf {
 
           $j = $x = 1;
           foreach($tagBottoms as $tag) {
-            $nowTagLine[$j] .= $tag." ";
+            @$nowTagLine[$j] .= $tag." ";
             if($x == 3) {
                 $x = 0;
               $j++;
@@ -148,6 +152,15 @@ class GenratePdf {
       $pdf->Output('./my_filename.pdf','F'); 
       $_SESSION['previewPdf'] = "my_filename.pdf";
     } else {
+      unlink($_SESSION['previewPdf']);
+      unlink($this->uploadPath."/".$_SESSION['filepath']);
+      unlink($_SESSION['filepath_thumb']);
+      unlink($_SESSION['filepath_1_thumb']);
+      unset($_SESSION['previewPdf']);
+      unset($_SESSION['filepath']);
+      unset($_SESSION['filepath_thumb']);
+      unset($_SESSION['filepath_1_thumb']);
+      unset($_SESSION['password']);
       $pdf->Output();
     }
   }
@@ -156,13 +169,13 @@ class GenratePdf {
     if($i == 1) {
       $fileploadName = $_SESSION['filepath_1_thumb'];
       if(!empty($fileploadName)) {
-        $ext = end(explode(".", $fileploadName));
+        $ext = @end(explode(".", $fileploadName));
         $xxx_final = ($size['width']-90); 
         $pdf->Image($fileploadName, $xxx_final, 8, 0, 0, $ext, '', true, false);
       }
     } else {
       $fileploadName = $_SESSION['filepath_thumb'];
-      $ext = end(explode(".", $fileploadName));
+      $ext = @end(explode(".", $fileploadName));
       $xxx_final = ($size['width']-55); 
       $pdf->Image($fileploadName, $xxx_final, 2, 0, 0, $ext, '', true, false);
     }
