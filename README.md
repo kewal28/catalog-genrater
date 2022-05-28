@@ -2,6 +2,10 @@
 
 This is very basic project. In this project we have a pdf in which we have to add Comapny Name, tag Line, Company Logo with font size argesment.
 
+Requirements:
+
+We have a pdf file in which we have to add customer logo, Company Name, Company Tag Line (1st Page), Paragraph (1st Page), and add Footer text. Front page logo and other page logo size are different.
+
 For this project i amd using PHP language and some very basic javascript.
 
 What we are using in this project
