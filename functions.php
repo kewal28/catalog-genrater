@@ -1,0 +1,267 @@
+<?php 
+require('vendor/autoload.php');
+session_start();
+
+class GenratePdf {
+
+  private $password = "1234567";
+  private $previewPdfFile = "./preview-page.pdf";
+  private $orignalPdfFile = "./cat-m2wl.pdf";
+
+  public function __construct() {
+    $this->debug = false;
+    $this->time = date("Y-m-d-H-i-s");
+    $this->msg = "Please enter password to process!!";
+  }
+
+  function login($password) {
+    $return = false;
+    if(!empty($password)) {
+      if($password === $this->password) {
+        $_SESSION['password'] = $password;
+        $return = true;
+      } else {
+        unset($_SESSION['password']);
+      }
+    }
+    return $return;
+  }
+
+  function uploadImage($request) {
+    $uploadPath = "./upload";
+    if(!empty($request['myFile'])) {
+        $fileName = $request['myFile']['name'];
+        $file = explode(".", $request['myFile']['name']);
+        if(in_array($file[1],["png", "jpg", "jpeg"])) {
+            $fileploadName = $uploadPath.'/'.$fileName;
+            move_uploaded_file($request['myFile']["tmp_name"], $fileploadName);
+            $_SESSION['filepath'] = $fileploadName;
+        }
+    }
+    return ["folder" => $uploadPath, "filepath" => $_SESSION['filepath'], "ext" => $file[1], "filename" => $file[0]];
+  }
+
+  function genratePreview($request) {
+    if($request['preview']) {
+      $request['file'] = $this->previewPdfFile;
+    } else {
+      $request['file'] = $this->orignalPdfFile;
+    }
+    $logo = $this->uploadImage($request);
+    $thumb1 = $logo["folder"]."/".$logo["filename"]."_1_thumb.".$logo["ext"];
+    $this->generateThumbnail($logo["filepath"], $thumb1, 300, 180);
+    $_SESSION['filepath_1_thumb'] = $thumb1;
+    $thumb = $logo["folder"]."/".$logo["filename"]."_thumb.".$logo["ext"];
+    $this->generateThumbnail($logo["filepath"], $thumb, 180, 120);
+    $_SESSION['filepath_thumb'] = $thumb;
+    $tagLine = (!empty($request['tagLine'])) ? $request['tagLine']: "";
+    $tagLineFont = (!empty($request['tagLineFont'])) ? $request['tagLineFont']: "";
+    $tagLine2 = (!empty($request['tagLine2'])) ? $request['tagLine2']: "";
+    $tagLine2Font = (!empty($request['tagLine2Font'])) ? $request['tagLine2Font']: "";
+    $tagBottom = (!empty($request['tagBottom'])) ? $request['tagBottom']: "";
+    $skipPage = (!empty($request['skipPage'])) ? $request['skipPage']: "";
+    $footerLine = (!empty($request['footerLine'])) ? $request['footerLine']: "";
+    $tagLineFooterFont = (!empty($request['tagLineFooterFont'])) ? $request['tagLineFooterFont']: "";
+    $file = (!empty($request['file'])) ? $request['file']: 'preview-page.pdf';
+    $preview = (!empty($request['preview'])) ? $request['preview']: false;
+    $previewRequest = ["tagLine" => $tagLine, "tagLine2" => $tagLine2, "tagBottom" => $tagBottom, "footerLine" => $footerLine, "file" => $file, "skipPage" => $skipPage, "preview" => $preview, "tagLine2Font" => $tagLine2Font, "tagLineFont" => $tagLineFont, "tagLineFooterFont" => $tagLineFooterFont];
+    $this->genratePdf($previewRequest);
+  }
+
+  function genratePdf($request) {
+    $tagLine = $request['tagLine'];
+    $tagLine2 = $request['tagLine2'];
+    $tagBottom = $request['tagBottom'];
+
+    $tagLineFont = $request['tagLineFont'] ?? 26;
+    $tagLine2Font = $request['tagLine2Font'] ?? 26;
+    // Set source PDF file 
+    $pdf = new \Mpdf\Mpdf(); 
+    if(file_exists("./".$request['file'])){ 
+        $pagecount = $pdf->setSourceFile($request['file']); 
+    } else {
+        die('Source PDF not found!'); 
+    }
+    $skipPgae = [];
+    if(!empty($request['skipPage']) && !$request['preview']) {
+      $skipPgae = explode(",", $request['skipPage']);
+    }
+    $nowTagLine = [];
+    // Add watermark image to PDF pages 
+    for($i=1;$i<=$pagecount;$i++) {
+        $tpl = $pdf->importPage($i); 
+        $size = $pdf->getTemplateSize($tpl);
+        $pdf->addPage(); 
+        $pdf->useTemplate($tpl, 1, 1, $size['width'], $size['height'], TRUE); 
+        if(in_array($i, $skipPgae)) {
+          continue;
+        }
+
+        //Top Title
+        if($i == 1 && !empty($tagLine)) {
+          $pdf->SetFont('Trebuchet MS', 'R', $tagLineFont);
+          $pdf->WriteText(20, 26, $tagLine);
+
+          $pdf->SetFont('Trebuchet MS', 'R', $tagLine2Font);
+          $pdf->WriteText(20, (35 + ($tagLine2Font/8)), $tagLine2);
+        }
+
+        //Bottom tag
+        $nowTagLine = [];
+        if($i == 1 && !empty($tagBottom)) {
+          $tagBottoms = explode(" ", $tagBottom);
+
+          $j = $x = 1;
+          foreach($tagBottoms as $tag) {
+            $nowTagLine[$j] .= $tag." ";
+            if($x == 3) {
+                $x = 0;
+              $j++;
+            }
+            $x++;
+          }
+          
+          $k = $size['height'] - 28;
+          $height = 0;
+          $p = 1;
+          $fontSize = $request['tagLineFooterFont'] ?? 14;
+          foreach($nowTagLine as $line) {
+            if($p == 1) {
+              $height = $k;
+            } else {
+              $height = $height+($fontSize/2);
+            }
+            $pdf->SetFont('Trebuchet MS', 'R', $fontSize);
+            $pdf->WriteText($size['width'] - 80, $height, $line);
+            $p++;
+          }
+        }
+
+        //Set Logo on all page
+        $this->addLogo($pdf, $size, $i);
+
+        //Footer
+        $this->footerLine($pdf, $size, $request, $i);
+    } 
+    // Output PDF with watermark 
+    if($request['preview']) {
+      $pdf->Output('./my_filename.pdf','F'); 
+      $_SESSION['previewPdf'] = "my_filename.pdf";
+    } else {
+      $pdf->Output();
+    }
+  }
+
+  function addLogo(&$pdf, $size, $i) {
+    if($i == 1) {
+      $fileploadName = $_SESSION['filepath_1_thumb'];
+      if(!empty($fileploadName)) {
+        $ext = end(explode(".", $fileploadName));
+        $xxx_final = ($size['width']-90); 
+        $pdf->Image($fileploadName, $xxx_final, 8, 0, 0, $ext, '', true, false);
+      }
+    } else {
+      $fileploadName = $_SESSION['filepath_thumb'];
+      $ext = end(explode(".", $fileploadName));
+      $xxx_final = ($size['width']-55); 
+      $pdf->Image($fileploadName, $xxx_final, 2, 0, 0, $ext, '', true, false);
+    }
+  }
+
+  function footerLine(&$pdf, $size, $request, $i) {
+    if($request['preview']) {
+      if($i > 1 && !empty($request['footerLine'])) {
+        $pdf->SetTextColor(255,255,255);
+        $pdf->SetFont('Arial', 'R', 14);
+        $pdf->WriteText(15, $size['height'] - 11, $request['footerLine']);
+      }
+    } else {
+      if($i > 3 && !empty($request['footerLine'])) {
+        $pdf->SetTextColor(255,255,255);
+        $pdf->SetFont('Arial', 'R', 14);
+        $pdf->WriteText(15, $size['height'] - 11, $request['footerLine']);
+      }
+    }
+  }
+
+  function generateThumbnail1($sourceFilename, $thumb, $thumbnail_width, $thumbnail_height) {
+    $arr_image_details = getimagesize($sourceFilename); // pass id to thumb name
+    $original_width = $arr_image_details[0];
+    $original_height = $arr_image_details[1];
+    if ($original_width > $original_height) {
+        $new_width = $thumbnail_width;
+        $new_height = intval($original_height * $new_width / $original_width);
+    } else {
+        $new_height = $thumbnail_height;
+        $new_width = intval($original_width * $new_height / $original_height);
+    }
+    $dest_x = intval(($thumbnail_width - $new_width) / 2);
+    $dest_y = intval(($thumbnail_height - $new_height) / 2);
+    if ($arr_image_details[2] == IMAGETYPE_GIF) {
+        $imgt = "ImageGIF";
+        $imgcreatefrom = "ImageCreateFromGIF";
+    }
+    if ($arr_image_details[2] == IMAGETYPE_JPEG) {
+        $imgt = "ImageJPEG";
+        $imgcreatefrom = "ImageCreateFromJPEG";
+    }
+    if ($arr_image_details[2] == IMAGETYPE_PNG) {
+        $imgt = "ImagePNG";
+        $imgcreatefrom = "ImageCreateFromPNG";
+    }
+    if ($imgt) {
+        $old_image = $imgcreatefrom($sourceFilename);
+        $new_image = imagecreatetruecolor($thumbnail_width, $thumbnail_height);
+        $white = imagecolorallocate($new_image, 255, 255, 255);
+        imagefilledellipse($new_image, 0, 90, $thumbnail_width, $thumbnail_height, $white);
+        imagecopyresized($new_image, $old_image, $dest_x, $dest_y, 0, 0, $new_width, $new_height, $original_width, $original_height);
+        $imgt($new_image, $thumb);
+    }
+  }
+
+  function generateThumbnail($filepath, $thumbpath, $thumbnail_width, $thumbnail_height, $background=[255,255,255]) {
+    list($original_width, $original_height, $original_type) = getimagesize($filepath);
+    if ($original_width > $original_height) {
+        $new_width = $thumbnail_width;
+        $new_height = intval($original_height * $new_width / $original_width);
+    } else {
+        $new_height = $thumbnail_height;
+        $new_width = intval($original_width * $new_height / $original_height);
+    }
+    $dest_x = intval(($thumbnail_width - $new_width)/ 2);
+    $dest_y = intval(($thumbnail_height - $new_height)/2);
+
+    if ($original_type === 1) {
+        $imgt = "ImageGIF";
+        $imgcreatefrom = "ImageCreateFromGIF";
+    } else if ($original_type === 2) {
+        $imgt = "ImageJPEG";
+        $imgcreatefrom = "ImageCreateFromJPEG";
+    } else if ($original_type === 3) {
+        $imgt = "ImagePNG";
+        $imgcreatefrom = "ImageCreateFromPNG";
+    } else {
+        return false;
+    }
+
+    $old_image = $imgcreatefrom($filepath);
+    $new_image = imagecreatetruecolor($thumbnail_width, $thumbnail_height); // creates new image, but with a black background
+
+    // figuring out the color for the background
+    if(is_array($background) && count($background) === 3) {
+      list($red, $green, $blue) = $background;
+      $color = imagecolorallocate($new_image, $red, $green, $blue);
+      imagefill($new_image, 0, 0, $color);
+    // apply transparent background only if is a png image
+    } else if($background === 'transparent' && $original_type === 3) {
+      imagesavealpha($new_image, TRUE);
+      $color = imagecolorallocatealpha($new_image, 0, 0, 0, 127);
+      imagefill($new_image, 0, 0, $color);
+    }
+
+    imagecopyresampled($new_image, $old_image, $dest_x, $dest_y, 0, 0, $new_width, $new_height, $original_width, $original_height);
+    $imgt($new_image, $thumbpath);
+    return file_exists($thumbpath);
+  }
+
+}
