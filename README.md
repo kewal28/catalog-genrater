@@ -40,6 +40,9 @@ http://localhost/catalog-genrater/
 
 ```
 
-# Default password is 1234567 (Password is save in function.php Line No: 7)
+### Default password is 1234567 (Password is save in function.php Line No: 7)
 
 Follow for such more content.
+
+<img width="1124" alt="Screenshot 2022-05-28 at 3 17 50 PM" src="https://user-images.githubusercontent.com/16914035/170820134-e7b650bd-d015-4fc9-82a5-a245b0796415.png">
+
