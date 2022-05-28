@@ -1,4 +1,4 @@
-# catalog-genrater
+# Genrater Catalog Using Php and Mpdf
 
 This is very basic project. In this project we have a pdf in which we have to add Comapny Name, tag Line, Company Logo with font size argesment.
 
