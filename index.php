@@ -107,13 +107,13 @@ if(!empty($_SESSION['previewPdf']) && file_exists($_SESSION['previewPdf'])) {
         <td style="padding: 10px">First Page Bottom Tag Line</td>
         <td><textarea name="TagBottom" style="padding: 10px; height: 30px; width: 80%"><?php echo @$_POST['TagBottom'] ?></textarea></td>
       </tr>
+      <tr >
+        <td style="padding: 10px">Font Size Bottom Tag Line</td>
+        <td><input type="range" min="5" max="30" name="TagLineFooterFont" value="<?php echo @$_POST['TagLineFooterFont'] ?? 14 ?>" class="slider" id="myRange3"> <span id="myRange3-value"></span></td>
+      </tr> 
       <tr>
         <td>Footer Line</td>
         <td><input type="text" name="FooterLine" value="<?php echo @$_POST['FooterLine'] ?>" style="padding: 10px; height: 20px; width: 80%" placeholder="Footer line" /></td>
-      </tr> 
-      <tr >
-        <td style="padding: 10px">Font Size Footer Line</td>
-        <td><input type="range" min="5" max="30" name="TagLineFooterFont" value="<?php echo @$_POST['TagLineFooterFont'] ?? 14 ?>" class="slider" id="myRange3"> <span id="myRange3-value"></span></td>
       </tr> 
       <tr> 
         <td></td>
