@@ -30,6 +30,18 @@ class GenratePdf {
 
   function uploadImage($request) {
     $uploadPath = $this->uploadPath;
+    if(!empty($request['myFileUrl'])) {
+      $myFileUrl = $request['myFileUrl'];
+      $fname = explode("/", $myFileUrl);
+      $fileName = "file.jpg";
+      if(!empty($fname[1])) {
+        $fileName = $fname;
+      }
+      $file = explode(".", $fileName);
+      $fileploadName = $uploadPath.'/'.$fileName;
+      $this->downloadFile($myFileUrl, $fileploadName);
+      return ["folder" => $uploadPath, "filepath" => $_SESSION['filepath'], "ext" => $file[1], "filename" => $file[0]];
+    }
     if(!empty($request['myFile']['name'])) {
         $fileName = $request['myFile']['name'];
         $file = explode(".", $fileName);
@@ -45,12 +57,32 @@ class GenratePdf {
     }
   }
 
+  function downloadFile($url, $path) {
+    $newfname = $path;
+    $file = fopen ($url, 'rb');
+    if ($file) {
+        $newf = fopen ($newfname, 'wb');
+        if ($newf) {
+            while(!feof($file)) {
+                fwrite($newf, fread($file, 1024 * 8), 1024 * 8);
+            }
+        }
+    }
+    if ($file) {
+        fclose($file);
+    }
+    if ($newf) {
+        fclose($newf);
+    }
+}
+
   function genratePreview($request) {
     if($request['preview']) {
       $request['file'] = $this->previewPdfFile;
     } else {
       $request['file'] = $this->orignalPdfFile;
     }
+    //
     $logo = $this->uploadImage($request);
     $thumb1 = $logo["folder"]."/".$logo["filename"]."_1_thumb.".$logo["ext"];
     $this->generateThumbnail($logo["folder"]."/".$logo["filepath"], $thumb1, 300, 180);
@@ -194,41 +226,6 @@ class GenratePdf {
         $pdf->SetFont('Arial', 'R', 14);
         $pdf->WriteText(15, $size['height'] - 11, $request['footerLine']);
       }
-    }
-  }
-
-  function generateThumbnail1($sourceFilename, $thumb, $thumbnail_width, $thumbnail_height) {
-    $arr_image_details = getimagesize($sourceFilename); // pass id to thumb name
-    $original_width = $arr_image_details[0];
-    $original_height = $arr_image_details[1];
-    if ($original_width > $original_height) {
-        $new_width = $thumbnail_width;
-        $new_height = intval($original_height * $new_width / $original_width);
-    } else {
-        $new_height = $thumbnail_height;
-        $new_width = intval($original_width * $new_height / $original_height);
-    }
-    $dest_x = intval(($thumbnail_width - $new_width) / 2);
-    $dest_y = intval(($thumbnail_height - $new_height) / 2);
-    if ($arr_image_details[2] == IMAGETYPE_GIF) {
-        $imgt = "ImageGIF";
-        $imgcreatefrom = "ImageCreateFromGIF";
-    }
-    if ($arr_image_details[2] == IMAGETYPE_JPEG) {
-        $imgt = "ImageJPEG";
-        $imgcreatefrom = "ImageCreateFromJPEG";
-    }
-    if ($arr_image_details[2] == IMAGETYPE_PNG) {
-        $imgt = "ImagePNG";
-        $imgcreatefrom = "ImageCreateFromPNG";
-    }
-    if ($imgt) {
-        $old_image = $imgcreatefrom($sourceFilename);
-        $new_image = imagecreatetruecolor($thumbnail_width, $thumbnail_height);
-        $white = imagecolorallocate($new_image, 255, 255, 255);
-        imagefilledellipse($new_image, 0, 90, $thumbnail_width, $thumbnail_height, $white);
-        imagecopyresized($new_image, $old_image, $dest_x, $dest_y, 0, 0, $new_width, $new_height, $original_width, $original_height);
-        $imgt($new_image, $thumb);
     }
   }
 

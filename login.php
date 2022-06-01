@@ -26,5 +26,6 @@ if(isset($_POST['password']) && !empty($_POST['password'])) {
 <input type="submit" name="submit_pass" value="SUBMIT">
 <?php if(!empty($message)) {?><p style="color:red;"><?php echo $message; ?></p><?php } ?>
 </form>
-</div></body>
+</div>
+</body>
 </html>

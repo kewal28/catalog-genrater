@@ -6,7 +6,9 @@ if(empty($_SESSION['password'])) {
 }
 if(!empty($_POST['preview'])) {
   // print_r($_POST); die;
-  $request = ["myFile" => $_FILES['MyFile'],
+  $request = [
+  "myFile" => $_FILES['MyFile'],
+  "myFileUrl" => $_POST['MyFileUrl'],
   'skipPage' => $_POST['SkipPage'],
   'tagLine' => $_POST['TagLine'],
   'tagLineFont' => $_POST['TagLineFont'],
@@ -21,6 +23,7 @@ if(!empty($_POST['preview'])) {
 }
 if(!empty($_POST['generate'])) {
   $request = ["myFile" => $_FILES['MyFile'],
+  "myFileUrl" => $_POST['MyFileUrl'],
   'skipPage' => $_POST['SkipPage'],
   'tagLine' => $_POST['TagLine'],
   'tagLineFont' => $_POST['TagLineFont'],
@@ -82,6 +85,10 @@ if(!empty($_SESSION['previewPdf']) && file_exists($_SESSION['previewPdf'])) {
       <tr>
         <td style="padding: 10px">Logo</td>
         <td><input type="file" id="MyFile" name="MyFile" style="padding: 10px; height: 20px; width: 80%"> </td>
+      </tr>
+      <tr>
+        <td style="padding: 10px">Logo Url</td>
+        <td><input type="text" name="MyFileUrl" value="<?php echo @$_POST['MyFileUrl'] ?>" style="padding: 10px; height: 20px; width: 80%"> </td>
       </tr> 
       <tr> 
         <td style="padding: 10px">Skip Page</td>
